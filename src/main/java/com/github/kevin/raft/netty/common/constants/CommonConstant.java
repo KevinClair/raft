@@ -18,5 +18,10 @@ public class CommonConstant {
     /**
      * 消息体的长度
      */
-    public static final byte TOTAL_LENGTH = 9;
+    public static final byte TOTAL_LENGTH = 13;
+
+    /**
+     * 重连频率，单位：秒
+     */
+    public static final Integer RECONNECT_SECONDS = 20;
 }
