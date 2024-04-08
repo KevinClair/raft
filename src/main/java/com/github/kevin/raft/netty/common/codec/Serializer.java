@@ -10,6 +10,7 @@ import java.util.Objects;
 
 /**
  * 序列化和反序列化
+ * todo protobuf
  */
 public class Serializer {
 
