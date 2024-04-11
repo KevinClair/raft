@@ -24,4 +24,9 @@ public class CommonConstant {
      * 重连频率，单位：秒
      */
     public static final Integer RECONNECT_SECONDS = 20;
+
+    /**
+     * 读写超时时间
+     */
+    public static final Integer READ_TIMEOUT_SECONDS = 120;
 }
