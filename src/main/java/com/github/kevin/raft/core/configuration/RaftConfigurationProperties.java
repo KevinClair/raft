@@ -10,5 +10,7 @@ import java.util.List;
 @Data
 public class RaftConfigurationProperties {
 
-    private List<String> address = Arrays.asList("localhost:8080", "localhost:8081", "localhost:8082", "localhost:8083", "localhost:8084");
+    private List<String> address = Arrays.asList("localhost:27015", "localhost:27016", "localhost:27017", "localhost:27018", "localhost:27019");
+
+    private Integer port;
 }
