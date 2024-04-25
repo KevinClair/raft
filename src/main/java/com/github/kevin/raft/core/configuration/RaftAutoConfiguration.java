@@ -1,10 +1,20 @@
 package com.github.kevin.raft.core.configuration;
 
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import com.github.kevin.raft.netty.server.NettyServer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(value = RaftConfigurationProperties.class)
 public class RaftAutoConfiguration {
 
+    /**
+     * 初始化服务端
+     *
+     * @param properties
+     * @return
+     */
+    @Bean
+    public NettyServer nettyServer(RaftConfigurationProperties properties) {
+        return new NettyServer(properties);
+    }
 }
