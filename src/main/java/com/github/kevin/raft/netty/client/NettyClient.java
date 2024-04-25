@@ -26,6 +26,8 @@ public class NettyClient implements DisposableBean {
 
     private EventLoopGroup loopGroup = new NioEventLoopGroup(4);
 
+    private Channel channel;
+
     /**
      * 客户端初始化
      *
@@ -68,12 +70,13 @@ public class NettyClient implements DisposableBean {
                 });
         // 启用客户端连接
         try {
-            bootstrap.connect().sync().addListener((ChannelFutureListener) channelFuture -> {
+            ChannelFuture future = bootstrap.connect().sync().addListener((ChannelFutureListener) channelFuture -> {
                 if (!channelFuture.isSuccess()) {
                     this.reconnect(address, handler);
                     return;
                 }
                 log.info("Server address:{} connect successfully.", address);
+                channel = channelFuture.channel();
             });
         } catch (InterruptedException e) {
             log.error("Netty client start error:{}", ExceptionUtils.getStackTrace(e));

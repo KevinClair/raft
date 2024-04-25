@@ -1,5 +1,6 @@
 package com.github.kevin.raft.netty.server;
 
+import com.github.kevin.raft.core.configuration.RaftConfigurationProperties;
 import com.github.kevin.raft.netty.common.codec.MessageDecoder;
 import com.github.kevin.raft.netty.common.codec.MessageEncoder;
 import com.github.kevin.raft.netty.common.constants.CommonConstant;
@@ -10,10 +11,12 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 
 import java.net.InetSocketAddress;
 
@@ -22,26 +25,37 @@ import java.net.InetSocketAddress;
  *
  * @author KevinClair
  */
-public class NettyServer implements DisposableBean {
+@RequiredArgsConstructor
+public class NettyServer implements DisposableBean, InitializingBean {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
 
     private Channel channel;
-    private NettyServerHandler nettyServerHandler;
+    private NettyServerHandler nettyServerHandler = new NettyServerHandler();
     // 配置服务器
     private EventLoopGroup bossGroup = new NioEventLoopGroup();
     private EventLoopGroup workerGroup = new NioEventLoopGroup();
 
-    public NettyServer(NettyServerHandler nettyServerHandler) {
-        this.nettyServerHandler = nettyServerHandler;
+    private final RaftConfigurationProperties properties;
+
+    @Override
+    public void destroy() {
+        // 关闭 Netty Server
+        if (channel != null) {
+            channel.close();
+        }
+        // 优雅关闭两个 EventLoopGroup 对象
+        bossGroup.shutdownGracefully();
+        workerGroup.shutdownGracefully();
     }
 
-    public void start() {
+    @Override
+    public void afterPropertiesSet() throws Exception {
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .localAddress(new InetSocketAddress(27017))
+                    .localAddress(new InetSocketAddress(properties.getPort()))
                     // 表示系统用于临时存放已完成三次握手的请求的队列的最大长度
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     // 是否开启TCP底层的心跳机制
@@ -78,16 +92,5 @@ public class NettyServer implements DisposableBean {
         } catch (Exception e) {
             logger.error("Netty sever started failed,msg:{}", ExceptionUtils.getStackTrace(e));
         }
-    }
-
-    @Override
-    public void destroy() {
-        // 关闭 Netty Server
-        if (channel != null) {
-            channel.close();
-        }
-        // 优雅关闭两个 EventLoopGroup 对象
-        bossGroup.shutdownGracefully();
-        workerGroup.shutdownGracefully();
     }
 }
