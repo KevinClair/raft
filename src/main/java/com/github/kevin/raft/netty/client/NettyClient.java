@@ -33,7 +33,7 @@ public class NettyClient implements DisposableBean {
      *
      * @param address 服务端地址
      */
-    public void initClient(String address) {
+    public NettyClient(String address) {
         NettyClientHandler handler = new NettyClientHandler();
         this.startClient(address, handler);
     }

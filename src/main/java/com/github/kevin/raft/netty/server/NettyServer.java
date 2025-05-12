@@ -25,7 +25,6 @@ import java.net.InetSocketAddress;
  *
  * @author KevinClair
  */
-@RequiredArgsConstructor
 public class NettyServer implements DisposableBean {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
@@ -38,21 +37,20 @@ public class NettyServer implements DisposableBean {
 
     private final RaftConfigurationProperties properties;
 
-    @Override
-    public void destroy() {
-        // 关闭 Netty Server
-        if (channel != null) {
-            channel.close();
-        }
-        // 优雅关闭两个 EventLoopGroup 对象
-        bossGroup.shutdownGracefully();
-        workerGroup.shutdownGracefully();
+    /**
+     * 服务端初始化
+     *
+     * @param properties 配置文件
+     */
+    public NettyServer(RaftConfigurationProperties properties) {
+        this.properties = properties;
+        this.start();
     }
 
     /**
      * 启动 Netty Server
      */
-    public void start() {
+    private void start() {
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
@@ -94,5 +92,16 @@ public class NettyServer implements DisposableBean {
         } catch (Exception e) {
             logger.error("Netty sever started failed,msg:{}", ExceptionUtils.getStackTrace(e));
         }
+    }
+
+    @Override
+    public void destroy() {
+        // 关闭 Netty Server
+        if (channel != null) {
+            channel.close();
+        }
+        // 优雅关闭两个 EventLoopGroup 对象
+        bossGroup.shutdownGracefully();
+        workerGroup.shutdownGracefully();
     }
 }
