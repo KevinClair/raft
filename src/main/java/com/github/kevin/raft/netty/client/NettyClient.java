@@ -12,7 +12,6 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.springframework.beans.factory.DisposableBean;
 
 import java.util.concurrent.TimeUnit;
 
@@ -22,7 +21,7 @@ import java.util.concurrent.TimeUnit;
  * @author KevinClair
  **/
 @Slf4j
-public class NettyClient implements DisposableBean {
+public class NettyClient {
 
     private EventLoopGroup loopGroup = new NioEventLoopGroup(4);
 
@@ -77,6 +76,9 @@ public class NettyClient implements DisposableBean {
                 }
                 log.info("Server address:{} connect successfully.", address);
                 channel = channelFuture.channel();
+                channel.closeFuture().addListener((ChannelFutureListener) closeFuture -> {
+                    this.close();
+                });
             });
         } catch (InterruptedException e) {
             log.error("Netty client start error:{}", ExceptionUtils.getStackTrace(e));
@@ -99,16 +101,12 @@ public class NettyClient implements DisposableBean {
         }, CommonConstant.RECONNECT_SECONDS, TimeUnit.SECONDS);
     }
 
-    @Override
-    public void destroy() throws Exception {
-        this.close();
-    }
-
     /**
      * 关闭
      */
     private void close() {
         if (loopGroup != null) {
+            log.warn("Netty client close loop group.");
             loopGroup.shutdownGracefully();
         }
     }

@@ -1,6 +1,5 @@
 package com.github.kevin.raft.netty.server;
 
-import com.github.kevin.raft.configuration.RaftConfigurationProperties;
 import com.github.kevin.raft.netty.common.codec.MessageDecoder;
 import com.github.kevin.raft.netty.common.codec.MessageEncoder;
 import com.github.kevin.raft.netty.common.constants.CommonConstant;
@@ -11,12 +10,9 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
 
 import java.net.InetSocketAddress;
 
@@ -25,7 +21,7 @@ import java.net.InetSocketAddress;
  *
  * @author KevinClair
  */
-public class NettyServer implements DisposableBean {
+public class NettyServer {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
 
@@ -35,27 +31,24 @@ public class NettyServer implements DisposableBean {
     private EventLoopGroup bossGroup = new NioEventLoopGroup();
     private EventLoopGroup workerGroup = new NioEventLoopGroup();
 
-    private final RaftConfigurationProperties properties;
-
     /**
      * 服务端初始化
      *
-     * @param properties 配置文件
+     * @param port 启动端口号
      */
-    public NettyServer(RaftConfigurationProperties properties) {
-        this.properties = properties;
-        this.start();
+    public NettyServer(Integer port) {
+        this.start(port);
     }
 
     /**
      * 启动 Netty Server
      */
-    private void start() {
+    private void start(Integer port) {
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
-                    .localAddress(new InetSocketAddress(properties.getPort()))
+                    .localAddress(new InetSocketAddress(port))
                     // 表示系统用于临时存放已完成三次握手的请求的队列的最大长度
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     // 是否开启TCP底层的心跳机制
@@ -88,14 +81,18 @@ public class NettyServer implements DisposableBean {
             if (future.isSuccess()) {
                 logger.debug("Netty Server started successfully.");
                 channel = future.channel();
+                channel.closeFuture().addListener(closeFuture -> {
+                            this.close();
+                        }
+                );
             }
         } catch (Exception e) {
             logger.error("Netty sever started failed,msg:{}", ExceptionUtils.getStackTrace(e));
         }
     }
 
-    @Override
-    public void destroy() {
+    public void close() {
+        logger.warn("Netty Server close.");
         // 关闭 Netty Server
         if (channel != null) {
             channel.close();
