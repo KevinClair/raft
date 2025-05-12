@@ -26,7 +26,7 @@ import java.net.InetSocketAddress;
  * @author KevinClair
  */
 @RequiredArgsConstructor
-public class NettyServer implements DisposableBean, InitializingBean {
+public class NettyServer implements DisposableBean {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
 
@@ -49,8 +49,10 @@ public class NettyServer implements DisposableBean, InitializingBean {
         workerGroup.shutdownGracefully();
     }
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
+    /**
+     * 启动 Netty Server
+     */
+    public void start() {
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
