@@ -1,4 +1,4 @@
-package com.github.kevin.raft.core.configuration;
+package com.github.kevin.raft.configuration;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

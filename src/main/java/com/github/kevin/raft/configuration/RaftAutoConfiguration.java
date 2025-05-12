@@ -1,4 +1,4 @@
-package com.github.kevin.raft.core.configuration;
+package com.github.kevin.raft.configuration;
 
 import com.github.kevin.raft.netty.server.NettyServer;
 import org.springframework.context.annotation.Bean;

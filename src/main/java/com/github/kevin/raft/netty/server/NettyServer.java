@@ -1,6 +1,6 @@
 package com.github.kevin.raft.netty.server;
 
-import com.github.kevin.raft.core.configuration.RaftConfigurationProperties;
+import com.github.kevin.raft.configuration.RaftConfigurationProperties;
 import com.github.kevin.raft.netty.common.codec.MessageDecoder;
 import com.github.kevin.raft.netty.common.codec.MessageEncoder;
 import com.github.kevin.raft.netty.common.constants.CommonConstant;
