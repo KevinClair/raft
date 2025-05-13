@@ -20,5 +20,5 @@ public class RaftConfigurationProperties {
     /**
      * 除本机之外的Ip地址
      */
-    private String address = "localhost:27015,localhost:27016,localhost:27017,localhost:27018,localhost:27019";
+    private String address = "127.0.0.1:27015,127.0.0.1:27016,127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019";
 }
