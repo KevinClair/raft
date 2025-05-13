@@ -2,7 +2,6 @@ package com.github.kevin.raft.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +21,9 @@ public class PersistentState {
     private long currentTerm;
 
     /**
-     * 投票的候选人ID
+     * 投票的候选人地址
      */
-    private Integer votedFor;
+    private String votedFor;
 
     /**
      * 日志条目列表
