@@ -64,9 +64,9 @@ public class RaftNode {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        otherAddresses.forEach(otherAddress -> {
-            RaftRpcClientContainer.getInstance().addRpcClient(otherAddress, new RaftRpcClient(new NettyClient(otherAddress).getChannel()));
-        });
+        // 启动客户端
+        NettyClient nettyClient = new NettyClient();
+        otherAddresses.forEach(nettyClient::connect);
         this.persistentState = new PersistentState();
         // 开启选举线程
         electionScheduledExecutorService.scheduleWithFixedDelay(new ElectionThread(), 3000, 500, java.util.concurrent.TimeUnit.MILLISECONDS);

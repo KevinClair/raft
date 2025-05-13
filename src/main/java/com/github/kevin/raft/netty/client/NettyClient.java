@@ -1,5 +1,7 @@
 package com.github.kevin.raft.netty.client;
 
+import com.github.kevin.raft.core.RaftRpcClient;
+import com.github.kevin.raft.core.RaftRpcClientContainer;
 import com.github.kevin.raft.netty.common.codec.MessageDecoder;
 import com.github.kevin.raft.netty.common.codec.MessageEncoder;
 import com.github.kevin.raft.netty.common.constants.CommonConstant;
@@ -29,25 +31,19 @@ public class NettyClient {
 
     private Channel channel;
 
+    private final Bootstrap bootstrap = new Bootstrap();
+
     /**
      * 客户端初始化
-     *
-     * @param address 服务端地址
      */
-    public NettyClient(String address) {
-        NettyClientHandler handler = new NettyClientHandler();
-        this.startClient(address, handler);
+    public NettyClient() {
+        this.startClient();
     }
 
-    private void startClient(String address, NettyClientHandler handler) {
-        String[] addrInfo = address.split(":");
-        final String serverAddress = addrInfo[0];
-        final String serverPort = addrInfo[1];
+    private void startClient() {
         // 配置客户端
-        Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(loopGroup)
                 .channel(NioSocketChannel.class)
-                .remoteAddress(serverAddress, Integer.parseInt(serverPort))
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
                 .handler(new ChannelInitializer<Channel>() {
@@ -66,18 +62,29 @@ public class NettyClient {
                                 // 心跳检测
 //                                .addLast(new HeartBeatClientHandler())
                                 // 客户端业务处理器
-                                .addLast(handler);
+                                .addLast(new NettyClientHandler());
                     }
                 });
-        // 启用客户端连接
+    }
+
+    public void connect(String address) {
+        if (RaftRpcClientContainer.getInstance().contains(address)) {
+            return;
+        }
+        String[] addrInfo = address.split(":");
+        String host = addrInfo[0];
+        String port = addrInfo[1];
+
         try {
-            ChannelFuture future = bootstrap.connect().sync().addListener((ChannelFutureListener) channelFuture -> {
-                if (!channelFuture.isSuccess()) {
-                    this.reconnect(address, handler);
+            bootstrap.connect(host, Integer.parseInt(port)).sync().addListener((ChannelFutureListener) future -> {
+                if (!future.isSuccess()) {
+                    log.error("Netty client connect to server failed, address:{}", address);
+                    this.reconnect(address);
                     return;
                 }
-                log.info("Server address:{} connect successfully.", address);
-                channel = channelFuture.channel();
+                log.info("Netty client connect to server successfully, address:{}", address);
+                channel = future.channel();
+                RaftRpcClientContainer.getInstance().addRpcClient(address, new RaftRpcClient(channel));
                 channel.closeFuture().addListener((ChannelFutureListener) closeFuture -> {
                     this.close();
                 });
@@ -92,14 +99,16 @@ public class NettyClient {
      * 重新链接服务端
      *
      * @param address 客户端地址
-     * @param handler 处理器
      */
-    public void reconnect(String address, NettyClientHandler handler) {
+    public void reconnect(String address) {
         loopGroup.schedule(() -> {
+            if (RaftRpcClientContainer.getInstance().contains(address)) {
+                return;
+            }
             if (log.isDebugEnabled()) {
                 log.debug("Netty client start reconnect, address:{}", address);
             }
-            this.startClient(address, handler);
+            this.connect(address);
         }, CommonConstant.RECONNECT_SECONDS, TimeUnit.SECONDS);
     }
 

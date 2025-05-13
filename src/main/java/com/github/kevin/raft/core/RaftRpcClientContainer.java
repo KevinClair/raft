@@ -56,5 +56,15 @@ public class RaftRpcClientContainer {
         rpcClients.remove(address);
     }
 
+    /**
+     * 判断是否包含某个Rpc客户端
+     *
+     * @param address 节点地址
+     * @return 是否包含
+     */
+    public Boolean contains(String address) {
+        return rpcClients.containsKey(address);
+    }
+
 }
 
