@@ -70,7 +70,7 @@ public class NettyServer {
                                     // 编码器
                                     .addLast(new MessageEncoder())
                                     // 心跳处理器
-//                                    .addLast(new HeartBeatServerHandler())
+                                    .addLast(new HeartBeatServerHandler())
                                     // 服务端处理器
                                     .addLast(nettyServerHandler);
                         }

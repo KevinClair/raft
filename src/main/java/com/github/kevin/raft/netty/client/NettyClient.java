@@ -60,7 +60,7 @@ public class NettyClient {
                                 // 编码器
                                 .addLast(new MessageEncoder())
                                 // 心跳检测
-//                                .addLast(new HeartBeatClientHandler())
+                                .addLast(new HeartBeatClientHandler())
                                 // 客户端业务处理器
                                 .addLast(new NettyClientHandler());
                     }
