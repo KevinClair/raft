@@ -28,5 +28,5 @@ public class CommonConstant {
     /**
      * 读写超时时间
      */
-    public static final Integer READ_TIMEOUT_SECONDS = 120;
+    public static final Integer READ_TIMEOUT_SECONDS = 60;
 }
