@@ -15,23 +15,23 @@ public class VolatileState {
     /**
      * 已知已提交的最高的日志条目的索引
      */
-    private int commitIndex;
+    private Long commitIndex;
 
     /**
      * 已经被应用到状态机的最高的日志条目的索引
      */
-    private int lastApplied;
+    private Long lastApplied;
 
     // 领导者专用（选举后重新初始化）
     /**
      * 对于每一台服务器，发送到该服务器的下一个日志条目的索引
      */
-    private int[] nextIndex;
+    private Long[] nextIndex;
 
     /**
      * 对于每一台服务器，已知的已经复制到该服务器的最高日志条目的索引
      */
-    private int[] matchIndex;
+    private Long[] matchIndex;
 
     /**
      * 构造函数
@@ -39,9 +39,9 @@ public class VolatileState {
      * @param serverCount 服务器数量
      */
     public VolatileState(int serverCount) {
-        this.commitIndex = 0;
-        this.lastApplied = 0;
-        this.nextIndex = new int[serverCount];
-        this.matchIndex = new int[serverCount];
+        this.commitIndex = 0L;
+        this.lastApplied = 0L;
+        this.nextIndex = new Long[serverCount];
+        this.matchIndex = new Long[serverCount];
     }
 }
