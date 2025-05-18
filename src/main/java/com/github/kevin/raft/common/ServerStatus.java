@@ -6,7 +6,7 @@ package com.github.kevin.raft.common;
  * 该类用于存储服务器的状态
  * </p>
  */
-public enum ServerState {
+public enum ServerStatus {
 
     FOLLOWER,
 
