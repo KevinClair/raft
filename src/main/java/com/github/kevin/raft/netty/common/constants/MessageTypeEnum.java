@@ -9,17 +9,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Getter
 public enum MessageTypeEnum {
-    // 心跳请求
-    HEART_BEAT_RQEUEST((byte) 0x01),
+    // 请求投票
+    VOTE_REQUEST((byte) 0x01),
 
-    // 心跳响应
-    HEART_BEAT_RESPONSE((byte) 0x02),
-
-    // 服务接口请求
-    SERVICE_REQUEST((byte) 0x03),
-
-    // 服务接口响应
-    SERVICE_RESPONSE((byte) 0x04);
+    // 追加日志
+    APPEND_ENTRIES_REQUEST((byte) 0x02);
 
     private final byte code;
 

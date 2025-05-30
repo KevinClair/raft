@@ -2,7 +2,7 @@ package com.github.kevin.raft.netty.common.codec;
 
 import com.caucho.hessian.io.Hessian2Input;
 import com.caucho.hessian.io.Hessian2Output;
-import com.github.kevin.raft.netty.common.entity.Message;
+import com.github.kevin.raft.netty.common.entity.Request;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -28,11 +28,11 @@ public class Serializer {
         }
     }
 
-    public static Message deserialize(final byte[] data) throws Exception {
+    public static Request deserialize(final byte[] data) throws Exception {
         Hessian2Input hessian2Input = null;
         try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data);) {
             hessian2Input = new Hessian2Input(inputStream);
-            return (Message) hessian2Input.readObject();
+            return (Request) hessian2Input.readObject();
         } finally {
             if (Objects.nonNull(hessian2Input)){
                 hessian2Input.close();

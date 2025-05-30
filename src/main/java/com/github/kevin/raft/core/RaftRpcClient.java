@@ -1,7 +1,7 @@
 package com.github.kevin.raft.core;
 
-import com.github.kevin.raft.dto.Request;
 import com.github.kevin.raft.dto.RequestVoteReqDto;
+import com.github.kevin.raft.netty.common.entity.Request;
 import io.netty.channel.Channel;
 
 public class RaftRpcClient {

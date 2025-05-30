@@ -2,10 +2,10 @@ package com.github.kevin.raft.core;
 
 import com.github.kevin.raft.common.ServerStatus;
 import com.github.kevin.raft.dto.AppendEntriesRequest;
-import com.github.kevin.raft.dto.Request;
 import com.github.kevin.raft.entity.PersistentState;
 import com.github.kevin.raft.entity.VolatileState;
 import com.github.kevin.raft.netty.client.NettyClient;
+import com.github.kevin.raft.netty.common.entity.Request;
 import com.github.kevin.raft.netty.server.NettyServer;
 import com.github.kevin.raft.utils.NameThreadPoolFactory;
 import lombok.Data;

@@ -3,7 +3,7 @@ package com.github.kevin.raft.netty.common.codec;
 import com.alibaba.fastjson.JSONObject;
 import com.github.kevin.raft.netty.common.constants.CommonConstant;
 import com.github.kevin.raft.netty.common.constants.MessageTypeEnum;
-import com.github.kevin.raft.netty.common.entity.Message;
+import com.github.kevin.raft.netty.common.entity.Request;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
@@ -66,7 +66,7 @@ public class MessageDecoder extends LengthFieldBasedFrameDecoder {
         // 计算消息长度
         int bodyLength = fullLength - CommonConstant.TOTAL_LENGTH;
         // 初始化消息对象
-        Message message = new Message();
+        Request message = new Request();
         message.setType(MessageTypeEnum.getType(type));
         message.setRequestId(requestId);
         // 如果不是心跳类型，此处应该都是大于0；心跳类型的请求不包含请求体，所以一般fullLength就是全部的消息长度
