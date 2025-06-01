@@ -6,13 +6,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AppendEntriesRequest {
+public class AppendEntriesRequest implements Serializable {
 
     /**
      * 当前任期
@@ -20,14 +21,9 @@ public class AppendEntriesRequest {
     private Long currentTerm;
 
     /**
-     * 被请求者的address
-     */
-    private String serverAddress;
-
-    /**
      * leader的address
      */
-    private String leaderAddress;
+    private String leaderId;
 
     /**
      * 新的日志条目紧随之前的索引值
