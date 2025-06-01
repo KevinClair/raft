@@ -1,8 +1,10 @@
 package com.github.kevin.raft.core;
 
-import com.github.kevin.raft.dto.RequestVoteReqDto;
-import com.github.kevin.raft.netty.common.entity.Request;
+import com.github.kevin.raft.dto.*;
+import com.github.kevin.raft.netty.common.entity.RaftMessage;
 import io.netty.channel.Channel;
+
+import java.util.concurrent.CompletableFuture;
 
 public class RaftRpcClient {
 
@@ -20,13 +22,25 @@ public class RaftRpcClient {
         channel.writeAndFlush(args);
     }
 
-    /**
-     * 发送请求
-     *
-     * @param request
-     */
-    public void send(Request request) {
-        // todo 获取响应结果
-        channel.writeAndFlush(request);
+    public CompletableFuture<AppendEntriesResponse> handleAppendEntries(RaftMessage<AppendEntriesRequest> request) {
+        // 处理成功的响应
+        CompletableFuture<RaftMessage> completableFuture = new CompletableFuture<>();
+        channel.writeAndFlush(request).addListener(future -> {
+            if (future.isSuccess()) {
+                RequestFutureManager.putTask(request.getRequestId(), completableFuture);
+            }
+        });
+        return completableFuture.thenApply(response -> (AppendEntriesResponse) response.getData());
+    }
+
+    public CompletableFuture<RequestVoteResponse> handleRequestVote(RaftMessage<RequestVoteRequest> request) {
+        // 处理成功的响应
+        CompletableFuture<RaftMessage> completableFuture = new CompletableFuture<>();
+        channel.writeAndFlush(request).addListener(future -> {
+            if (future.isSuccess()) {
+                RequestFutureManager.putTask(request.getRequestId(), completableFuture);
+            }
+        });
+        return completableFuture.thenApply(response -> (RequestVoteResponse) response.getData());
     }
 }
