@@ -1,15 +1,12 @@
 package com.github.kevin.raft.netty.server;
 
+import com.github.kevin.raft.core.RaftNode;
 import com.github.kevin.raft.netty.common.codec.MessageDecoder;
 import com.github.kevin.raft.netty.common.codec.MessageEncoder;
-import com.github.kevin.raft.netty.common.constants.CommonConstant;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +23,7 @@ public class NettyServer {
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
 
     private Channel channel;
-    private NettyServerHandler nettyServerHandler = new NettyServerHandler();
+    private NettyServerHandler nettyServerHandler;
     // 配置服务器
     private EventLoopGroup bossGroup = new NioEventLoopGroup();
     private EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -36,7 +33,8 @@ public class NettyServer {
      *
      * @param port 启动端口号
      */
-    public NettyServer(Integer port) {
+    public NettyServer(Integer port, RaftNode raftNode) {
+        this.nettyServerHandler = new NettyServerHandler(raftNode);
         this.start(port);
     }
 
@@ -62,9 +60,9 @@ public class NettyServer {
                             // 添加一堆 NettyServerHandler 到 ChannelPipeline 中
                             channelPipeline
                                     /*Netty提供的日志打印Handler，可以展示发送接收出去的字节*/
-                                    .addLast(new LoggingHandler(LogLevel.INFO))
+//                                    .addLast(new LoggingHandler(LogLevel.INFO))
                                     // 空闲检测
-                                    .addLast(new IdleStateHandler(CommonConstant.READ_TIMEOUT_SECONDS, 0, 0))
+//                                    .addLast(new IdleStateHandler(CommonConstant.READ_TIMEOUT_SECONDS, 0, 0))
                                     // 解码器
                                     .addLast(new MessageDecoder(65535, 4, 4, -8, 0))
                                     // 编码器

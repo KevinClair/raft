@@ -9,9 +9,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.timeout.IdleStateHandler;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -52,9 +49,9 @@ public class NettyClient {
                         ChannelPipeline pipeline = channel.pipeline();
                         pipeline
                                 /*Netty提供的日志打印Handler，可以展示发送接收出去的字节*/
-                                .addLast(new LoggingHandler(LogLevel.INFO))
+//                                .addLast(new LoggingHandler(LogLevel.INFO))
                                 // 空闲检测
-                                .addLast(new IdleStateHandler(0, CommonConstant.WRITE_TIMEOUT_SECONDS, 0))
+//                                .addLast(new IdleStateHandler(0, CommonConstant.WRITE_TIMEOUT_SECONDS, 0))
                                 // 解码器
                                 .addLast(new MessageDecoder(65535, 4, 4, -8, 0))
                                 // 编码器

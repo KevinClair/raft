@@ -1,6 +1,7 @@
 package com.github.kevin.raft.netty.client;
 
-import com.github.kevin.raft.netty.common.entity.Request;
+import com.github.kevin.raft.core.RequestFutureManager;
+import com.github.kevin.raft.netty.common.entity.RaftMessage;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -11,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @ChannelHandler.Sharable
 @Slf4j
-public class NettyClientHandler extends SimpleChannelInboundHandler<Request<String>> {
+public class NettyClientHandler extends SimpleChannelInboundHandler<RaftMessage<String>> {
 
 
     @Override
@@ -25,8 +26,8 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<Request<Stri
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, Request<String> data) throws Exception {
-
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, RaftMessage<String> data) throws Exception {
+        RequestFutureManager.completeTask(data);
     }
 
     @Override
