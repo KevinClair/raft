@@ -19,22 +19,6 @@ public class HeartBeatServerHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(HeartBeatServerHandler.class);
 
-
-    @Override
-    public void channelRegistered(ChannelHandlerContext ctx) {
-
-    }
-
-    @Override
-    public void channelUnregistered(ChannelHandlerContext ctx) {
-
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-
-    }
-
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof IdleStateEvent) {
@@ -48,8 +32,4 @@ public class HeartBeatServerHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-
-    }
 }

@@ -19,11 +19,6 @@ public class HeartBeatClientHandler extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(HeartBeatClientHandler.class);
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-
-    }
-
-    @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof IdleStateEvent) {
             IdleStateEvent event = (IdleStateEvent) evt;
