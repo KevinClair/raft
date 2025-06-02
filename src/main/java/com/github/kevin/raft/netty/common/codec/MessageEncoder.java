@@ -2,7 +2,7 @@ package com.github.kevin.raft.netty.common.codec;
 
 import com.alibaba.fastjson.JSONObject;
 import com.github.kevin.raft.netty.common.constants.CommonConstant;
-import com.github.kevin.raft.netty.common.entity.Request;
+import com.github.kevin.raft.netty.common.entity.RaftMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
@@ -26,10 +26,10 @@ import java.util.Objects;
  * 4B  requestId（消息长度）   body（object类型数据）
  */
 @Slf4j
-public class MessageEncoder extends MessageToByteEncoder<Request> {
+public class MessageEncoder extends MessageToByteEncoder<RaftMessage> {
 
     @Override
-    protected void encode(ChannelHandlerContext channelHandlerContext, Request object, ByteBuf byteBuf) throws Exception {
+    protected void encode(ChannelHandlerContext channelHandlerContext, RaftMessage object, ByteBuf byteBuf) throws Exception {
         // 魔法值
         byteBuf.writeBytes(CommonConstant.MAGIC_NUMBER);
         // 标记当前的写位置
