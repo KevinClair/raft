@@ -128,7 +128,7 @@ public class RaftNode {
             electionScheduledExecutorService.scheduleWithFixedDelay(new ElectionThread(), 3000, 3000, java.util.concurrent.TimeUnit.MILLISECONDS);
         }
         // 开启心跳线程
-//        heartbeatScheduledExecutorService.scheduleAtFixedRate(new HeartBeatThread(), 0, 50, java.util.concurrent.TimeUnit.MILLISECONDS);
+        heartbeatScheduledExecutorService.scheduleAtFixedRate(new HeartBeatThread(), 0, 50, java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -206,7 +206,7 @@ public class RaftNode {
                     // 清空投票记录
                     persistentState.setVotedFor(null);
                     // 执行成为leader后的操作
-                    //                becomeLeaderToDoThing();
+                    becomeLeaderToDoThing();
                 } else {
                     log.error("Node {} failed to become leader, current term: {}, success count: {}", address, persistentState.getCurrentTerm(), success);
                     // 重新开始下一轮选举
@@ -247,6 +247,19 @@ public class RaftNode {
     }
 
     /**
+     * 成为Leader后的初始化操作
+     */
+    private void becomeLeaderToDoThing() {
+        // 初始化 nextIndex 和 matchIndex
+        Long lastIndex = logModule.getLastIndex();
+        for (int i = 0; i < otherAddresses.size(); i++) {
+            volatileState.getNextIndex()[i] = lastIndex + 1;
+            volatileState.getMatchIndex()[i] = 0L;
+        }
+        log.info("Leader {} initialized nextIndex and matchIndex arrays", address);
+    }
+
+    /**
      * 心跳线程
      *
      * @author KevinClair
@@ -256,48 +269,211 @@ public class RaftNode {
 
         @Override
         public void run() {
-            // 不是leader节点，直接跳过
+            try {
+                // 不是leader节点，直接跳过
+                if (status != ServerStatus.LEADER) {
+                    return;
+                }
+
+                // 如果上一次心跳间隔，和当前时间的差值小于心跳间隔基数，则不发送心跳
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - preHeartBeatTime < heartBeatTick) {
+                    return;
+                }
+
+                // 更新心跳时间
+                preHeartBeatTime = currentTime;
+
+                // 向所有的follower节点发送心跳或日志复制请求
+                for (int i = 0; i < otherAddresses.size(); i++) {
+                    String followerAddress = otherAddresses.get(i);
+                    int followerIndex = i;
+                    // 异步发送给每个follower
+                    this.sendAppendEntries(followerAddress, followerIndex);
+                }
+
+                // 尝试提交日志
+                tryCommitLog();
+            } catch (Exception e) {
+                log.error("HeartBeat thread error: {}", e.getMessage(), e);
+            }
+        }
+
+        private void sendAppendEntries(String followerAddress, int followerIndex) {
+            Optional.ofNullable(RaftRpcClientContainer.getInstance().getRpcClient(followerAddress))
+                    .ifPresent(rpcClient -> {
+                        try {
+                            // 获取该follower的nextIndex
+                            Long nextIndex = volatileState.getNextIndex()[followerIndex];
+                            Long prevLogIndex = nextIndex - 1;
+                            Long prevLogTerm = 0L;
+
+                            // 获取prevLogTerm
+                            if (prevLogIndex > 0) {
+                                LogEntry prevLog = logModule.read(prevLogIndex);
+                                if (prevLog != null) {
+                                    prevLogTerm = prevLog.getTerm();
+                                }
+                            }
+
+                            // 准备要发送的日志条目
+                            List<LogEntry> entries = new ArrayList<>();
+                            Long lastLogIndex = logModule.getLastIndex();
+                            
+                            // 如果有新日志需要复制
+                            if (nextIndex <= lastLogIndex) {
+                                // 发送从nextIndex开始的日志条目
+                                for (long i = nextIndex; i <= lastLogIndex; i++) {
+                                    LogEntry entry = logModule.read(i);
+                                    if (entry != null) {
+                                        entries.add(entry);
+                                    }
+                                }
+                            }
+
+                            // 构建AppendEntries请求
+                            AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.builder()
+                                    .currentTerm(persistentState.getCurrentTerm())
+                                    .leaderId(address)
+                                    .previousLogIndex(prevLogIndex)
+                                    .previousLogTerm(prevLogTerm)
+                                    .entries(entries.isEmpty() ? null : entries)
+                                    .leaderCommit(volatileState.getCommitIndex())
+                                    .build();
+
+                            RaftMessage<AppendEntriesRequest> request = RaftMessage.<AppendEntriesRequest>builder()
+                                    .type(MessageTypeEnum.APPEND_ENTRIES_REQUEST)
+                                    .data(appendEntriesRequest)
+                                    .build();
+
+                            // 发送请求并处理响应
+                            CompletableFuture<AppendEntriesResponse> future = rpcClient.handleAppendEntries(request);
+                            future.whenComplete((response, throwable) -> {
+                                try {
+                                    if (throwable != null) {
+                                        log.error("Failed to send AppendEntries to {}: {}", followerAddress, throwable.getMessage());
+                                        return;
+                                    }
+
+                                    if (response == null) {
+                                        return;
+                                    }
+
+                                    // 检查返回的term
+                                    if (response.getTerm() > persistentState.getCurrentTerm()) {
+                                        log.warn("Received higher term {} from {}, stepping down", response.getTerm(), followerAddress);
+                                        persistentState.setCurrentTerm(response.getTerm());
+                                        persistentState.setVotedFor(null);
+                                        status = ServerStatus.FOLLOWER;
+                                        return;
+                                    }
+
+                                    // 只有leader才处理响应
+                                    if (status != ServerStatus.LEADER) {
+                                        return;
+                                    }
+
+                                    if (response.isSuccess()) {
+                                        // 成功：更新nextIndex和matchIndex
+                                        if (!entries.isEmpty()) {
+                                            long newMatchIndex = prevLogIndex + entries.size();
+                                            volatileState.getMatchIndex()[followerIndex] = newMatchIndex;
+                                            volatileState.getNextIndex()[followerIndex] = newMatchIndex + 1;
+                                            log.info("Successfully replicated logs to {}, matchIndex: {}, nextIndex: {}",
+                                                    followerAddress, newMatchIndex, newMatchIndex + 1);
+                                        }
+                                    } else {
+                                        // 失败：减少nextIndex并重试
+                                        if (volatileState.getNextIndex()[followerIndex] > 1) {
+                                            volatileState.getNextIndex()[followerIndex]--;
+                                            log.warn("AppendEntries failed for {}, decreasing nextIndex to {}",
+                                                    followerAddress, volatileState.getNextIndex()[followerIndex]);
+                                        }
+                                    }
+                                } finally {
+                                    RequestFutureManager.remove(request.getRequestId());
+                                }
+                            });
+                        } catch (Exception e) {
+                            log.error("Error sending AppendEntries to {}: {}", followerAddress, e.getMessage(), e);
+                        }
+                    });
+        }
+
+        /**
+         * 尝试提交日志
+         */
+        private void tryCommitLog() {
             if (status != ServerStatus.LEADER) {
                 return;
             }
 
-            // 如果上一次心跳间隔，和当前时间的差值小于心跳间隔基数，则不发送心跳
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - preHeartBeatTime < heartBeatTick) {
-                return;
+            // 找到大多数节点已复制的最大索引
+            Long lastLogIndex = logModule.getLastIndex();
+            for (long n = lastLogIndex; n > volatileState.getCommitIndex(); n--) {
+                // 检查索引n的日志是否在当前任期内创建
+                LogEntry logEntry = logModule.read(n);
+                if (logEntry == null || logEntry.getTerm() != persistentState.getCurrentTerm()) {
+                    continue;
+                }
+
+                // 统计已复制到多少个节点
+                int replicaCount = 1; // leader自己
+                for (int i = 0; i < volatileState.getMatchIndex().length; i++) {
+                    if (volatileState.getMatchIndex()[i] >= n) {
+                        replicaCount++;
+                    }
+                }
+
+                // 如果大多数节点已复制，则提交
+                int majority = (otherAddresses.size() + 1) / 2 + 1;
+                if (replicaCount >= majority) {
+                    log.info("Committing log entries up to index {}, replicated on {} nodes", n, replicaCount);
+                    volatileState.setCommitIndex(n);
+                    
+                    // 应用已提交但未应用的日志到状态机
+                    for (long i = volatileState.getLastApplied() + 1; i <= volatileState.getCommitIndex(); i++) {
+                        LogEntry entry = logModule.read(i);
+                        if (entry != null) {
+                            stateMachine.apply(entry);
+                            volatileState.setLastApplied(i);
+                            log.info("Applied log entry {} to state machine", i);
+                        }
+                    }
+                    break;
+                }
             }
-            AppendEntriesRequest appendEntriesRequest = AppendEntriesRequest.builder().entries(null).leaderId(address).currentTerm(persistentState.getCurrentTerm()).leaderCommit(volatileState.getCommitIndex()).build();
-            // todo 修改此处的requestId的生成方式
-            RaftMessage<AppendEntriesRequest> request = new RaftMessage<>(new Random().nextInt(), MessageTypeEnum.APPEND_ENTRIES_REQUEST, appendEntriesRequest);
-            // 向所有的follower节点发送心跳
-            otherAddresses.forEach(address -> {
-                // 发送心跳
-                this.sendHeartBeat(address, request);
-            });
+        }
+    }
+
+    /**
+     * 接收客户端命令并复制到集群
+     *
+     * @param command 命令
+     * @param data    数据
+     * @return 是否成功
+     */
+    public boolean appendLog(String command, byte[] data) {
+        if (status != ServerStatus.LEADER) {
+            log.warn("Node {} is not leader, cannot append log", address);
+            return false;
         }
 
-        private void sendHeartBeat(String address, RaftMessage<AppendEntriesRequest> request) {
-            // todo 调整为异步方式
-            Optional.ofNullable(RaftRpcClientContainer.getInstance().getRpcClient(address))
-                    .ifPresent(rpcClient -> {
-                        CompletableFuture<AppendEntriesResponse> appendEntriesResponseCompletableFuture = rpcClient.handleAppendEntries(request);
-                        try {
-                            AppendEntriesResponse appendEntriesResponse = appendEntriesResponseCompletableFuture.get(3000, TimeUnit.MILLISECONDS);
-                            Long term = appendEntriesResponse.getTerm();
-                            if (term > persistentState.getCurrentTerm()) {
-                                log.error("Received heartbeat from {} with higher term: {}, current term: {}", address, term, persistentState.getCurrentTerm());
-                                // 如果收到的term比当前节点的term大，则更新当前节点的term
-                                persistentState.setCurrentTerm(term);
-                                persistentState.setVotedFor(null);
-                                // 更新状态为follower
-                                status = ServerStatus.FOLLOWER;
-                            }
-                        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                            throw new RuntimeException(e);
-                        } finally {
-                            RequestFutureManager.remove(request.getRequestId());
-                        }
-                    });
+        try {
+            // 创建新的日志条目
+            LogEntry logEntry = new LogEntry();
+            logEntry.setTerm(persistentState.getCurrentTerm());
+            logEntry.setCommand(command);
+            logEntry.setData(data);
+
+            // 写入本地日志
+            logModule.write(logEntry);
+            log.info("Leader {} appended new log entry at index {}", address, logEntry.getIndex());
+
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to append log: {}", e.getMessage(), e);
+            return false;
         }
     }
 }
