@@ -205,8 +205,8 @@ public class RaftNode {
                     leaderId = address;
                     // 清空投票记录
                     persistentState.setVotedFor(null);
-                    // 执行成为leader后的操作
-                    becomeLeaderToDoThing();
+                    // Execute initialization tasks when becoming leader
+                    initializeLeaderState();
                 } else {
                     log.error("Node {} failed to become leader, current term: {}, success count: {}", address, persistentState.getCurrentTerm(), success);
                     // 重新开始下一轮选举
@@ -247,10 +247,11 @@ public class RaftNode {
     }
 
     /**
-     * 成为Leader后的初始化操作
+     * Initialize leader state when node becomes leader
+     * Sets up nextIndex and matchIndex arrays for all followers
      */
-    private void becomeLeaderToDoThing() {
-        // 初始化 nextIndex 和 matchIndex
+    private void initializeLeaderState() {
+        // Initialize nextIndex and matchIndex
         Long lastIndex = logModule.getLastIndex();
         for (int i = 0; i < otherAddresses.size(); i++) {
             volatileState.getNextIndex()[i] = lastIndex + 1;
@@ -270,29 +271,29 @@ public class RaftNode {
         @Override
         public void run() {
             try {
-                // 不是leader节点，直接跳过
+                // Skip if not leader node
                 if (status != ServerStatus.LEADER) {
                     return;
                 }
 
-                // 如果上一次心跳间隔，和当前时间的差值小于心跳间隔基数，则不发送心跳
+                // If the difference between the last heartbeat interval and current time is less than the heartbeat interval base, do not send heartbeat
                 long currentTime = System.currentTimeMillis();
                 if (currentTime - preHeartBeatTime < heartBeatTick) {
                     return;
                 }
 
-                // 更新心跳时间
+                // Update heartbeat time
                 preHeartBeatTime = currentTime;
 
-                // 向所有的follower节点发送心跳或日志复制请求
+                // Send heartbeat or log replication requests to all follower nodes
                 for (int i = 0; i < otherAddresses.size(); i++) {
                     String followerAddress = otherAddresses.get(i);
                     int followerIndex = i;
-                    // 异步发送给每个follower
+                    // Send asynchronously to each follower
                     this.sendAppendEntries(followerAddress, followerIndex);
                 }
 
-                // 尝试提交日志
+                // Try to commit logs
                 tryCommitLog();
             } catch (Exception e) {
                 log.error("HeartBeat thread error: {}", e.getMessage(), e);
@@ -401,37 +402,37 @@ public class RaftNode {
         }
 
         /**
-         * 尝试提交日志
+         * Try to commit logs based on majority replication
          */
         private void tryCommitLog() {
             if (status != ServerStatus.LEADER) {
                 return;
             }
 
-            // 找到大多数节点已复制的最大索引
+            // Find the maximum index replicated by a majority of nodes
             Long lastLogIndex = logModule.getLastIndex();
             for (long n = lastLogIndex; n > volatileState.getCommitIndex(); n--) {
-                // 检查索引n的日志是否在当前任期内创建
+                // Check if the log at index n was created in the current term
                 LogEntry logEntry = logModule.read(n);
                 if (logEntry == null || logEntry.getTerm() != persistentState.getCurrentTerm()) {
                     continue;
                 }
 
-                // 统计已复制到多少个节点
-                int replicaCount = 1; // leader自己
+                // Count how many nodes have replicated
+                int replicaCount = 1; // leader itself
                 for (int i = 0; i < volatileState.getMatchIndex().length; i++) {
                     if (volatileState.getMatchIndex()[i] >= n) {
                         replicaCount++;
                     }
                 }
 
-                // 如果大多数节点已复制，则提交
+                // If a majority of nodes have replicated, commit
                 int majority = (otherAddresses.size() + 1) / 2 + 1;
                 if (replicaCount >= majority) {
                     log.info("Committing log entries up to index {}, replicated on {} nodes", n, replicaCount);
                     volatileState.setCommitIndex(n);
                     
-                    // 应用已提交但未应用的日志到状态机
+                    // Apply committed but unapplied logs to state machine
                     for (long i = volatileState.getLastApplied() + 1; i <= volatileState.getCommitIndex(); i++) {
                         LogEntry entry = logModule.read(i);
                         if (entry != null) {
